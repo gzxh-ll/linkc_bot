@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { env } from '../configs/env';
 import { callbackDebugSchema } from '../configs/schema';
 import { inspectStore } from '../diagnosis/inspector';
 import { generateEnvText } from '../generators/env.generator';
@@ -14,6 +15,26 @@ const botStatus = (store: StoreModel, type: BotType): StatusLevel => {
   const bot = store.bots.find((item) => item.type === type && item.enabled);
   if (!bot) return 'warning';
   return bot.webhookUrl ? 'ok' : 'warning';
+};
+
+const runWebhookTest = async (path: string): Promise<unknown> => {
+  const payload = {
+    test: true,
+    source: path,
+    triggeredAt: new Date().toISOString()
+  };
+
+  const targetUrl = `http://127.0.0.1:${env.port}${path}`;
+  return callbackDebugService.send(targetUrl, 'POST', payload, { 'x-linkcbot-test': '1' });
+};
+
+
+const handleWebhookTest = async (res: Response, path: string): Promise<void> => {
+  try {
+    ok(res, await runWebhookTest(path));
+  } catch (error) {
+    badRequest(res, '回调检测失败', (error as Error).message);
+  }
 };
 
 export const toolController = {
@@ -48,5 +69,20 @@ export const toolController = {
     } catch (error) {
       badRequest(res, '回调调试请求失败', (error as Error).message);
     }
+  },
+  testWechatWork: async (_req: Request, res: Response): Promise<void> => {
+    await handleWebhookTest(res, '/webhook/wechat/work');
+  },
+  testWechatPay: async (_req: Request, res: Response): Promise<void> => {
+    await handleWebhookTest(res, '/webhook/wechat/pay');
+  },
+  testFeishu: async (_req: Request, res: Response): Promise<void> => {
+    await handleWebhookTest(res, '/webhook/feishu');
+  },
+  testDingtalk: async (_req: Request, res: Response): Promise<void> => {
+    await handleWebhookTest(res, '/webhook/dingtalk');
+  },
+  testQq: async (_req: Request, res: Response): Promise<void> => {
+    await handleWebhookTest(res, '/webhook/qq');
   }
 };

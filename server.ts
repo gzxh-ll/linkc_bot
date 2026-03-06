@@ -86,6 +86,22 @@ const appendWebhookFileLog = (record: WebhookRecord): void => {
   fs.appendFileSync(webhookLogFilePath, `${JSON.stringify(record)}\n`, 'utf-8');
 };
 
+
+const runWebhookTestEndpoint = async (webhookPath: string): Promise<unknown> => {
+  const response = await fetch(`http://127.0.0.1:${PORT}${webhookPath}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-linkcbot-test': '1' },
+    body: JSON.stringify({ test: true, source: webhookPath, triggeredAt: new Date().toISOString() })
+  });
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    body: await response.text()
+  };
+};
+
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 app.use((req, _res, next) => {
@@ -196,6 +212,47 @@ app.get('/api/webhook', (_req: Request, res: Response) => {
 
 app.get('/api/test', (_req: Request, res: Response) => {
   res.json({ ok: true, message: 'LinkCBot API test passed', timestamp: new Date().toISOString() });
+});
+
+
+app.post('/api/test/wechat-work', async (_req: Request, res: Response) => {
+  try {
+    res.json(await runWebhookTestEndpoint('/webhook/wechat/work'));
+  } catch (error) {
+    res.status(400).json({ message: '回调检测失败', detail: (error as Error).message });
+  }
+});
+
+app.post('/api/test/wechat-pay', async (_req: Request, res: Response) => {
+  try {
+    res.json(await runWebhookTestEndpoint('/webhook/wechat/pay'));
+  } catch (error) {
+    res.status(400).json({ message: '回调检测失败', detail: (error as Error).message });
+  }
+});
+
+app.post('/api/test/feishu', async (_req: Request, res: Response) => {
+  try {
+    res.json(await runWebhookTestEndpoint('/webhook/feishu'));
+  } catch (error) {
+    res.status(400).json({ message: '回调检测失败', detail: (error as Error).message });
+  }
+});
+
+app.post('/api/test/dingtalk', async (_req: Request, res: Response) => {
+  try {
+    res.json(await runWebhookTestEndpoint('/webhook/dingtalk'));
+  } catch (error) {
+    res.status(400).json({ message: '回调检测失败', detail: (error as Error).message });
+  }
+});
+
+app.post('/api/test/qq', async (_req: Request, res: Response) => {
+  try {
+    res.json(await runWebhookTestEndpoint('/webhook/qq'));
+  } catch (error) {
+    res.status(400).json({ message: '回调检测失败', detail: (error as Error).message });
+  }
 });
 
 app.get('/api/env', (_req: Request, res: Response) => {
