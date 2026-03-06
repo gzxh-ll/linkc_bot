@@ -10,6 +10,12 @@ const handleReceive = (req: Request, res: Response, source?: string): void => {
 };
 
 export const webhookController = {
+  health: (_req: Request, res: Response): void => {
+    ok(res, {
+      status: 'ok',
+      uptime: Math.floor(process.uptime())
+    });
+  },
   receive: (req: Request, res: Response): void => {
     handleReceive(req, res);
   },

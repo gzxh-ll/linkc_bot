@@ -257,6 +257,14 @@ app.get('/api/webhook/logs', (_req: Request, res: Response) => {
   res.json(readWebhookFileLogs());
 });
 
+
+app.get('/api/webhook/health', (_req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    uptime: Math.floor(process.uptime())
+  });
+});
+
 app.get('/api/test', (_req: Request, res: Response) => {
   res.json({ ok: true, message: 'LinkCBot API test passed', timestamp: new Date().toISOString() });
 });
