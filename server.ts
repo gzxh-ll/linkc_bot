@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import cors from 'cors';
 import express, { Request, Response } from 'express';
 
@@ -48,6 +50,30 @@ const logger = {
   info: (msg: string, meta?: unknown): void => console.log(`[INFO] ${msg}`, meta ?? ''),
   warn: (msg: string, meta?: unknown): void => console.warn(`[WARN] ${msg}`, meta ?? ''),
   error: (msg: string, meta?: unknown): void => console.error(`[ERROR] ${msg}`, meta ?? '')
+};
+
+
+const configFilePath = path.resolve('configs', 'config.json');
+const allowedConfigKeys = new Set(['wechatWork', 'wechatPay', 'feishuBot', 'dingtalkBot', 'qqBot']);
+
+const ensureConfigFile = (): void => {
+  const dir = path.dirname(configFilePath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(configFilePath)) {
+    fs.writeFileSync(configFilePath, JSON.stringify({ updatedAt: new Date().toISOString() }, null, 2), 'utf-8');
+  }
+};
+
+const readSavedConfig = (): Record<string, unknown> => {
+  ensureConfigFile();
+  return JSON.parse(fs.readFileSync(configFilePath, 'utf-8')) as Record<string, unknown>;
+};
+
+const writeSavedConfig = (payload: Record<string, unknown>): Record<string, unknown> => {
+  const current = readSavedConfig();
+  const next = { ...current, ...payload, updatedAt: new Date().toISOString() };
+  fs.writeFileSync(configFilePath, JSON.stringify(next, null, 2), 'utf-8');
+  return next;
 };
 
 app.use(cors());
@@ -102,6 +128,30 @@ app.post('/api/config', (req: Request, res: Response) => {
     updatedAt: new Date().toISOString()
   };
   res.json({ success: true, config: store.config });
+});
+
+
+app.post('/api/config/save', (req: Request, res: Response) => {
+  const payload = req.body as Record<string, unknown>;
+  const keys = Object.keys(payload);
+
+  if (keys.length === 0) {
+    res.status(400).json({ message: '配置内容不能为空' });
+    return;
+  }
+
+  const invalidKeys = keys.filter((key) => !allowedConfigKeys.has(key));
+  if (invalidKeys.length > 0) {
+    res.status(400).json({ message: '存在不支持的配置类型', details: invalidKeys });
+    return;
+  }
+
+  const config = writeSavedConfig(payload);
+  res.json({ success: true, config });
+});
+
+app.get('/api/config/get', (_req: Request, res: Response) => {
+  res.json(readSavedConfig());
 });
 
 app.post('/api/webhook', (req: Request, res: Response) => {
