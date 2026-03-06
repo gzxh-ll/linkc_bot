@@ -4,12 +4,33 @@ import { inspectStore } from '../diagnosis/inspector';
 import { generateEnvText } from '../generators/env.generator';
 import { callbackDebugService } from '../services/callback-debug.service';
 import { getStore } from '../services/store.service';
+import { BotType, StoreModel } from '../utils/types';
 import { badRequest, ok } from '../utils/http';
 import { zodMessages } from '../utils/zod';
+
+type StatusLevel = 'ok' | 'warning';
+
+const botStatus = (store: StoreModel, type: BotType): StatusLevel => {
+  const bot = store.bots.find((item) => item.type === type && item.enabled);
+  if (!bot) return 'warning';
+  return bot.webhookUrl ? 'ok' : 'warning';
+};
 
 export const toolController = {
   health: (_req: Request, res: Response): void => {
     ok(res, { service: 'LinkCBot Config Tool v3 backend', status: 'ok', timestamp: new Date().toISOString() });
+  },
+  dashboardStatus: (_req: Request, res: Response): void => {
+    const store = getStore();
+
+    ok(res, {
+      wechatWork: store.weCom ? 'ok' : 'warning',
+      wechatPay: store.wechatPay ? 'ok' : 'warning',
+      feishuBot: botStatus(store, 'feishu'),
+      dingtalkBot: botStatus(store, 'dingtalk'),
+      qqBot: botStatus(store, 'qq'),
+      webhookServer: 'ok'
+    });
   },
   exportEnv: (_req: Request, res: Response): void => {
     res.type('text/plain').send(generateEnvText(getStore()));

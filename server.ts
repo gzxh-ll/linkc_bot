@@ -74,6 +74,23 @@ app.get('/api/dashboard', (_req: Request, res: Response) => {
   });
 });
 
+app.get('/api/dashboard/status', (_req: Request, res: Response) => {
+  const botStatus = (type: BotConfig['type']): 'ok' | 'warning' => {
+    const bot = store.config.bots.find((item) => item.type === type && item.enabled);
+    if (!bot) return 'warning';
+    return bot.webhookUrl ? 'ok' : 'warning';
+  };
+
+  res.json({
+    wechatWork: store.config.wecom ? 'ok' : 'warning',
+    wechatPay: store.config.wechatPay ? 'ok' : 'warning',
+    feishuBot: botStatus('feishu'),
+    dingtalkBot: botStatus('dingtalk'),
+    qqBot: botStatus('qq'),
+    webhookServer: 'ok'
+  });
+});
+
 app.get('/api/config', (_req: Request, res: Response) => {
   res.json(store.config);
 });
