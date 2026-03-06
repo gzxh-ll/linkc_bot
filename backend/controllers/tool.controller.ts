@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { env } from '../configs/env';
-import { callbackDebugSchema } from '../configs/schema';
+import { callbackDebugSchema, diagnosisCheckSchema } from '../configs/schema';
+import { runDiagnosisCheck } from '../diagnosis/checker';
 import { inspectStore } from '../diagnosis/inspector';
 import { generateEnvText } from '../generators/env.generator';
 import { callbackDebugService } from '../services/callback-debug.service';
@@ -27,7 +28,6 @@ const runWebhookTest = async (path: string): Promise<unknown> => {
   const targetUrl = `http://127.0.0.1:${env.port}${path}`;
   return callbackDebugService.send(targetUrl, 'POST', payload, { 'x-linkcbot-test': '1' });
 };
-
 
 const handleWebhookTest = async (res: Response, path: string): Promise<void> => {
   try {
@@ -59,6 +59,15 @@ export const toolController = {
   diagnostics: (_req: Request, res: Response): void => {
     const store = getStore();
     ok(res, { updatedAt: store.updatedAt, diagnostics: inspectStore(store) });
+  },
+  diagnosisCheck: (req: Request, res: Response): void => {
+    const parsed = diagnosisCheckSchema.safeParse(req.body);
+    if (!parsed.success) {
+      badRequest(res, '诊断参数非法', zodMessages(parsed.error));
+      return;
+    }
+
+    ok(res, runDiagnosisCheck(parsed.data));
   },
   callbackDebug: async (req: Request, res: Response): Promise<void> => {
     const parsed = callbackDebugSchema.safeParse(req.body);

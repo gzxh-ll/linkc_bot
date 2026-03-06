@@ -7,6 +7,7 @@ toolRoutes.get('/health', toolController.health);
 toolRoutes.get('/dashboard/status', toolController.dashboardStatus);
 toolRoutes.get('/env/export', toolController.exportEnv);
 toolRoutes.get('/diagnostics', toolController.diagnostics);
+toolRoutes.post('/diagnosis/check', toolController.diagnosisCheck);
 toolRoutes.post('/callback-debug', toolController.callbackDebug);
 
 toolRoutes.post('/test/wechat-work', toolController.testWechatWork);

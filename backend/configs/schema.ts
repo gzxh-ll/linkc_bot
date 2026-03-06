@@ -31,3 +31,16 @@ export const callbackDebugSchema = z.object({
   payload: z.unknown().optional(),
   headers: z.record(z.string()).optional()
 });
+
+export const diagnosisCheckSchema = z.object({
+  webhookRequest: z.object({
+    url: z.string().url().optional(),
+    headers: z.record(z.union([z.string(), z.array(z.string())])).optional(),
+    body: z.unknown().optional()
+  }),
+  httpResponse: z.object({
+    status: z.number().int(),
+    statusText: z.string().optional(),
+    body: z.string().optional()
+  })
+});

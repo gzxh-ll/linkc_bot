@@ -102,6 +102,30 @@ const runWebhookTestEndpoint = async (webhookPath: string): Promise<unknown> => 
   };
 };
 
+
+const runDiagnosisCheck = (input: {
+  webhookRequest: { url?: string; headers?: Record<string, unknown>; body?: unknown };
+  httpResponse: { status: number; statusText?: string; body?: string };
+}) => {
+  const issues: Array<{ code: string; level: 'warning' | 'error'; message: string; suggestion?: string }> = [];
+  const combined = `${(input.httpResponse.body ?? '').toLowerCase()} ${(input.httpResponse.statusText ?? '').toLowerCase()}`;
+
+  if (combined.includes('signature') || combined.includes('签名')) {
+    issues.push({ code: 'SIGNATURE_ERROR', level: 'error', message: '检测到签名错误。', suggestion: '请检查签名算法、token、timestamp、nonce。' });
+  }
+  if (combined.includes('certificate') || combined.includes('cert') || combined.includes('证书')) {
+    issues.push({ code: 'CERTIFICATE_ERROR', level: 'error', message: '检测到证书错误。', suggestion: '请核对证书序列号、平台证书、私钥与路径配置。' });
+  }
+  if (input.httpResponse.status === 404 || input.httpResponse.status === 502 || input.httpResponse.status === 503 || combined.includes('connection refused') || combined.includes('econnrefused') || combined.includes('timeout') || combined.includes('unreachable')) {
+    issues.push({ code: 'CALLBACK_URL_UNREACHABLE', level: 'error', message: '回调URL不可访问。', suggestion: '请确认回调地址、网络连通性与防火墙配置。' });
+  }
+  if (issues.length === 0 && input.httpResponse.status >= 400) {
+    issues.push({ code: 'HTTP_ERROR', level: 'warning', message: `收到异常 HTTP 状态码: ${input.httpResponse.status}`, suggestion: '请查看回调服务日志。' });
+  }
+
+  return { success: issues.length === 0, issues };
+};
+
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 app.use((req, _res, next) => {
@@ -288,6 +312,28 @@ app.get('/api/diagnosis', (_req: Request, res: Response) => {
   if (diagnostics.length === 0) diagnostics.push({ level: 'info', message: '配置正常' });
 
   res.json({ updatedAt: store.config.updatedAt, diagnostics });
+});
+
+
+app.post('/api/diagnosis/check', (req: Request, res: Response) => {
+  const payload = req.body as {
+    webhookRequest?: { url?: string; headers?: Record<string, unknown>; body?: unknown };
+    httpResponse?: { status?: number; statusText?: string; body?: string };
+  };
+
+  if (!payload.webhookRequest || !payload.httpResponse || typeof payload.httpResponse.status !== 'number') {
+    res.status(400).json({ message: '诊断参数非法，需要 webhookRequest 与 httpResponse.status' });
+    return;
+  }
+
+  res.json(runDiagnosisCheck({
+    webhookRequest: payload.webhookRequest,
+    httpResponse: {
+      status: payload.httpResponse.status,
+      statusText: payload.httpResponse.statusText,
+      body: payload.httpResponse.body
+    }
+  }));
 });
 
 app.use((err: Error, _req: Request, res: Response, _next: express.NextFunction) => {
