@@ -20,4 +20,16 @@ export const appendWebhookLogToFile = (log: CallbackLog): void => {
   fs.appendFileSync(logFilePath, `${JSON.stringify(log)}\n`, 'utf-8');
 };
 
+export const readWebhookLogsFromFile = (): CallbackLog[] => {
+  ensureLogFile();
+  const content = fs.readFileSync(logFilePath, 'utf-8').trim();
+  if (!content) return [];
+
+  return content
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as CallbackLog)
+    .reverse();
+};
+
 export const getWebhookLogFilePath = (): string => logFilePath;

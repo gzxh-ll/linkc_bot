@@ -5,6 +5,7 @@ export const webhookRoutes = Router();
 
 webhookRoutes.post('/webhook/:source', webhookController.receive);
 webhookRoutes.get('/webhook-logs', webhookController.listLogs);
+webhookRoutes.get('/webhook/logs', webhookController.listWebhookLogs);
 
 export const webhookCallbackRoutes = Router();
 

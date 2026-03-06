@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { readWebhookLogsFromFile } from '../services/webhook-log-file.service';
 import { getStore } from '../services/store.service';
 import { ok } from '../utils/http';
 import { receiveAndSaveWebhook } from '../webhooks/receiver';
@@ -29,5 +30,8 @@ export const webhookController = {
   },
   listLogs: (_req: Request, res: Response): void => {
     ok(res, getStore().callbackLogs);
+  },
+  listWebhookLogs: (_req: Request, res: Response): void => {
+    ok(res, readWebhookLogsFromFile());
   }
 };

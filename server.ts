@@ -32,6 +32,7 @@ type WebhookRecord = {
   id: string;
   source: string;
   receivedAt: string;
+  headers: Record<string, string | string[] | undefined>;
   payload: unknown;
 };
 
@@ -84,6 +85,22 @@ const appendWebhookFileLog = (record: WebhookRecord): void => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   if (!fs.existsSync(webhookLogFilePath)) fs.writeFileSync(webhookLogFilePath, '', 'utf-8');
   fs.appendFileSync(webhookLogFilePath, `${JSON.stringify(record)}\n`, 'utf-8');
+};
+
+
+const readWebhookFileLogs = (): WebhookRecord[] => {
+  const dir = path.dirname(webhookLogFilePath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(webhookLogFilePath)) fs.writeFileSync(webhookLogFilePath, '', 'utf-8');
+
+  const content = fs.readFileSync(webhookLogFilePath, 'utf-8').trim();
+  if (!content) return [];
+
+  return content
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as WebhookRecord)
+    .reverse();
 };
 
 
@@ -209,6 +226,7 @@ const handleWebhook = (req: Request, res: Response, sourceOverride?: string): vo
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     source: sourceOverride ?? String(req.headers['x-source'] ?? 'unknown'),
     receivedAt: new Date().toISOString(),
+    headers: req.headers,
     payload: req.body
   };
 
@@ -232,6 +250,11 @@ app.post('/api/webhook', (req: Request, res: Response) => {
 
 app.get('/api/webhook', (_req: Request, res: Response) => {
   res.json(store.webhookLogs);
+});
+
+
+app.get('/api/webhook/logs', (_req: Request, res: Response) => {
+  res.json(readWebhookFileLogs());
 });
 
 app.get('/api/test', (_req: Request, res: Response) => {
