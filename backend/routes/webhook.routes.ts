@@ -5,3 +5,11 @@ export const webhookRoutes = Router();
 
 webhookRoutes.post('/webhook/:source', webhookController.receive);
 webhookRoutes.get('/webhook-logs', webhookController.listLogs);
+
+export const webhookCallbackRoutes = Router();
+
+webhookCallbackRoutes.post('/webhook/wechat/work', webhookController.receiveWechatWork);
+webhookCallbackRoutes.post('/webhook/wechat/pay', webhookController.receiveWechatPay);
+webhookCallbackRoutes.post('/webhook/feishu', webhookController.receiveFeishu);
+webhookCallbackRoutes.post('/webhook/dingtalk', webhookController.receiveDingtalk);
+webhookCallbackRoutes.post('/webhook/qq', webhookController.receiveQq);

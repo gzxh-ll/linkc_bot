@@ -76,6 +76,16 @@ const writeSavedConfig = (payload: Record<string, unknown>): Record<string, unkn
   return next;
 };
 
+
+const webhookLogFilePath = path.resolve('logs', 'webhooks.log');
+
+const appendWebhookFileLog = (record: WebhookRecord): void => {
+  const dir = path.dirname(webhookLogFilePath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(webhookLogFilePath)) fs.writeFileSync(webhookLogFilePath, '', 'utf-8');
+  fs.appendFileSync(webhookLogFilePath, `${JSON.stringify(record)}\n`, 'utf-8');
+};
+
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 app.use((req, _res, next) => {
@@ -154,19 +164,30 @@ app.get('/api/config/get', (_req: Request, res: Response) => {
   res.json(readSavedConfig());
 });
 
-app.post('/api/webhook', (req: Request, res: Response) => {
+const handleWebhook = (req: Request, res: Response, sourceOverride?: string): void => {
   const record: WebhookRecord = {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    source: String(req.headers['x-source'] ?? 'unknown'),
+    source: sourceOverride ?? String(req.headers['x-source'] ?? 'unknown'),
     receivedAt: new Date().toISOString(),
     payload: req.body
   };
 
   store.webhookLogs.unshift(record);
   store.webhookLogs = store.webhookLogs.slice(0, 200);
+  appendWebhookFileLog(record);
 
   logger.info('Webhook received', { id: record.id, source: record.source });
   res.json({ success: true, id: record.id });
+};
+
+app.post('/webhook/wechat/work', (req: Request, res: Response) => handleWebhook(req, res, 'wechat/work'));
+app.post('/webhook/wechat/pay', (req: Request, res: Response) => handleWebhook(req, res, 'wechat/pay'));
+app.post('/webhook/feishu', (req: Request, res: Response) => handleWebhook(req, res, 'feishu'));
+app.post('/webhook/dingtalk', (req: Request, res: Response) => handleWebhook(req, res, 'dingtalk'));
+app.post('/webhook/qq', (req: Request, res: Response) => handleWebhook(req, res, 'qq'));
+
+app.post('/api/webhook', (req: Request, res: Response) => {
+  handleWebhook(req, res);
 });
 
 app.get('/api/webhook', (_req: Request, res: Response) => {
